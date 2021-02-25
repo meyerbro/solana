@@ -1287,7 +1287,7 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("list-roots")
-            .about("Output upto last <num-roots> root hashes and their heights starting at the given block height")
+            .about("Output up to last <num-roots> root hashes and their heights starting at the given block height")
             .arg(
                 Arg::with_name("max_height")
                     .long("max-height")
@@ -1295,6 +1295,13 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Maximum block height")
+            )
+            .arg(
+                Arg::with_name("start_root")
+                    .long("start-root")
+                    .value_name("NUM")
+                    .takes_value(true)
+                    .help("First root to start searching from")
             )
             .arg(
                 Arg::with_name("slot_list")
@@ -2697,12 +2704,18 @@ fn main() {
             } else {
                 panic!("Maximum height must be provided");
             };
+            let start_root = if let Some(height) = arg_matches.value_of("start_root") {
+                Slot::from_str(height).expect("Starting root must be a number")
+            } else {
+                0
+            };
             let num_roots = if let Some(roots) = arg_matches.value_of("num_roots") {
                 usize::from_str(roots).expect("Number of roots must be a number")
             } else {
                 usize::from_str(DEFAULT_ROOT_COUNT).unwrap()
             };
 
+<<<<<<< HEAD
             let iter = RootedSlotIterator::new(0, &blockstore).expect("Failed to get rooted slot");
 
             let slot_hash: Vec<_> = iter
@@ -2720,6 +2733,29 @@ fn main() {
                     }
                 })
                 .collect();
+=======
+            let iter = blockstore
+                .rooted_slot_iterator(start_root)
+                .expect("Failed to get rooted slot");
+
+            let mut slot_hash = Vec::new();
+            for (i, slot) in iter.into_iter().enumerate() {
+                if i > num_roots {
+                    break;
+                }
+                if slot <= max_height as u64 {
+                    let blockhash = blockstore
+                        .get_slot_entries(slot, 0)
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .hash;
+                    slot_hash.push((slot, blockhash));
+                } else {
+                    break;
+                }
+            }
+>>>>>>> a6b9327cd... Fix root scan in ledger tool (#15532)
 
             let mut output_file: Box<dyn Write> =
                 if let Some(path) = arg_matches.value_of("slot_list") {
